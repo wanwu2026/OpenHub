@@ -34,6 +34,10 @@ class Settings:
     cardkey_private_key = os.getenv("OPENHUB_CARDKEY_PRIVATE_KEY", "")
     cardkey_product = os.getenv("OPENHUB_CARDKEY_PRODUCT", "demo_app")
 
+    # update 插件：清单签名密钥。未配置时回退到 cardkey 私钥；公钥给客户端验签
+    update_private_key = os.getenv("OPENHUB_UPDATE_PRIVATE_KEY", "")
+    update_public_key_base64 = os.getenv("OPENHUB_UPDATE_PUBLIC_KEY_BASE64", "")
+
     def ensure_dirs(self):
         self.data_dir.mkdir(parents=True, exist_ok=True)
 

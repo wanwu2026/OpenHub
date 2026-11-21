@@ -102,6 +102,34 @@
 
 只做第 1 条不做第 2 条 = 可被换成任意 APK —— 这是更新检查类客户端最常见的漏洞，内核在契约层就把它列为必填字段。
 
+## 7.1 update 插件接口（版本更新检查）
+
+| 方法 | 路径 | 鉴权 | 说明 |
+|---|---|---|---|
+| POST | `/api/v1/update/publish` | Admin | 发布版本清单：请求含 `product/version/version_code/signer_fingerprint/apk_url/sha256`，服务端用私钥签清单，返回 `manifest_signature` |
+| GET | `/api/v1/update/check?product=&current_version_code=&channel=` | API Key | 客户端查更新；有更新时返回签名清单 + `manifest_signature` + `signature_algo`，无更新时 `manifest=null` |
+| GET | `/api/v1/update/manifest/{product}?channel=` | API Key | 取最新签名清单 |
+| GET | `/api/v1/update/verify/{product}?channel=&public_key_base64=` | Admin | 服务端自检：用公钥验最新清单签名是否有效 |
+| GET | `/api/v1/update/list?product=` | Admin | 列出已发布版本 |
+
+`signer_fingerprint` 必须是 64 位十六进制（APK 签名证书 SHA-256），发布时校验。
+清单签名算法 `RSA-SHA256`，签名字节 = 对 manifest 的**规范化 JSON**（`sort_keys=True`、无多余空格）做签，客户端按同法重建字节验签。私钥可用 `OPENHUB_UPDATE_PRIVATE_KEY` 单独配置，未配置时回退 `OPENHUB_CARDKEY_PRIVATE_KEY`。
+
+**客户端必须做的双校验**（见 §7）：先验 `manifest_signature`，下载 APK 后再比对 `signer_fingerprint` 与证书实际指纹。服务端只负责提供可验的清单与指纹，不替客户端做下载后校验。
+
+## 7.2 crash 插件接口（崩溃上报）
+
+| 方法 | 路径 | 鉴权 | 说明 |
+|---|---|---|---|
+| POST | `/api/v1/crash/report` | API Key | 上报崩溃：单条 `{device_id, app_id, stacktrace}` 或批量 `{device_id, reports:[...]}`；返回 `accepted/ids` |
+| GET | `/api/v1/crash/reports?app_id=&status=&limit=&offset=` | Admin | 查询崩溃（脱敏后的堆栈 + 设备哈希 + 状态） |
+| POST | `/api/v1/crash/{report_id}/resolve` | Admin | 标记为已处理 |
+
+隐私与稳定性约定：
+- `device_id` 只存 SHA-256（明文不入库）；
+- 堆栈自动脱敏：邮箱 → `[EMAIL]`、手机号 → `[PHONE]`、`Bearer xxx` → `Bearer [REDACTED]`、长十六进制串 → `[HEX]`；
+- 设备限流：10 分钟窗口内最多 20 条，超限返回 `CORE_RATE_LIMITED`（retryable=true）。
+
 ## 8. 兼容例外：CardKey 客户端的扁平响应
 
 为支持**之前已开发的客户端**，有一处有意偏离统一包络：

@@ -8,16 +8,17 @@ A backend platform you can **deploy to a server in one command**: a web admin UI
 
 **Core design**: kernel + plugins. Write the kernel once (auth, devices, config delivery, artifact hosting, audit, plugin engine). Adding a client = adding a plugin; the kernel never changes.
 
-## Current status: kernel working + first plugin migrated
+## Current status: kernel working + three plugins implemented
 
 - ✅ API contract (`docs/API_CONTRACT.md`): unified routes / auth / response envelope / error codes / versioning + the CardKey compatibility exception
 - ✅ Kernel (config, plugin protocol, registry, database, auth, errors)
-- ✅ **cardkey plugin migrated**: signing core (Base32/payload/sign) and state machine (one-device-one-code / activation limits / revocation / expiry) ported from CardKeySDK/demo-backend. `verify` keeps the flat response format for existing clients; admin routes use the unified envelope.
+- ✅ **cardkey plugin**: signing core and state machine (one-device-one-code / activation limits / revocation / expiry) ported from CardKeySDK/demo-backend. `verify` keeps the flat response format for existing clients; admin routes use the unified envelope.
+- ✅ **update plugin**: signed version manifests, mandatory APK signing-certificate fingerprint (contract §7 double check).
+- ✅ **crash plugin**: crash reports with PII redaction (email / phone / Bearer token / long hex) + per-device rate limit + batch + resolution state.
 - ✅ **Auth persisted + audit**: API keys store only SHA-256 hashes (plaintext shown once at creation), manageable and revocable; every request writes an audit record queryable via the admin API. Bootstrap credentials are kept for first install.
-- ✅ One-command deployment (install.sh + Docker Compose + systemd)
-- ✅ **End-to-end verification**: 10 tests green (4 cardkey + 6 kernel auth/audit), verified over real HTTP too — including a "no plaintext key in DB" check.
-- ⚠️ update / crash plugins are still placeholders (future clients)
-- ⚠️ No Docker on this machine — the Docker deployment path has not been run here.
+- ✅ One-command deployment (install.sh + Docker Compose + systemd), hardened non-root Dockerfile + `.dockerignore`
+- ✅ **End-to-end verification**: 17 tests green (4 cardkey + 6 kernel + 7 update/crash).
+- ⚠️ No Docker daemon on this machine — the Docker path is verified by GitHub Actions (ubuntu runner has Docker): real `docker build` + smoke test; only static syntax checks run locally.
 
 ## The contract (start here)
 
@@ -32,6 +33,10 @@ GET  /api/v1/core/health           health check (includes enabled plugins)
 GET  /                             web admin UI
 GET  /docs                         auto-generated OpenAPI docs
 POST /api/v1/cardkey/verify        issue/verify license (flat compatibility format)
+POST /api/v1/update/publish        publish a signed version manifest (admin)
+GET  /api/v1/update/check          check for updates (signature + fingerprint)
+POST /api/v1/crash/report          submit a crash report (redacted + rate-limited)
+GET  /api/v1/crash/reports         query crash reports (admin)
 POST /api/v1/core/keys             create an API key (plaintext returned once)
 GET  /api/v1/core/audit            query audit log (admin only)
 ```
@@ -68,8 +73,9 @@ python -m pytest tests/ -v
 1. ~~Confirm skeleton/contract direction~~ ✅
 2. ~~Migrate CardKeySDK/demo-backend into `plugins/cardkey`~~ ✅
 3. ~~Persist auth + write audit~~ ✅
-4. Fill in the update / crash plugins (future clients)
-5. Publish the repo
+4. ~~Fill in the update / crash plugins~~ ✅
+5. ~~Add CI + bilingual docs~~ ✅
+6. Publish the repo (needs the user to confirm credentials and repo name — **not pushed yet**)
 
 ## License
 

@@ -1,0 +1,59 @@
+# 真构建验证：本机无 docker，GitHub ubuntu runner 自带 docker，
+# 用它真正执行 docker build + compose 配置校验，让 docker 部署路径不是"纸面可用"。
+name: docker-build
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'Dockerfile'
+      - 'deploy/**'
+      - 'requirements.txt'
+      - 'app.py'
+      - 'core/**'
+      - 'plugins/**'
+      - '.github/workflows/docker-build.yml'
+  pull_request:
+    paths:
+      - 'Dockerfile'
+      - 'deploy/**'
+      - 'requirements.txt'
+      - '.github/workflows/docker-build.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 校验 compose 配置
+        working-directory: deploy
+        env:
+          OPENHUB_PORT: "8080"
+        run: |
+          # 用一个临时 .env 满足 env_file 引用（凭据是占位，不来自仓库）
+          printf 'OPENHUB_ADMIN_TOKEN=ci-placeholder\nOPENHUB_INITIAL_API_KEY=ohk_ci-placeholder\n' > .env
+          docker compose -f docker-compose.yml config --quiet
+          echo "compose 配置校验通过"
+
+      - name: 真正构建镜像
+        run: docker build -f deploy/Dockerfile -t openhub:ci .
+
+      - name: 冒烟启动并查健康
+        run: |
+          docker run -d --name openhub-ci -p 18080:8080 \
+            -e OPENHUB_ADMIN_TOKEN=ci-admin \
+            -e OPENHUB_INITIAL_API_KEY=ohk_ci-key \
+            openhub:ci
+          for i in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:18080/api/v1/core/health >/tmp/oh-health.json; then
+              echo "健康检查通过:"; cat /tmp/oh-health.json; exit 0
+            fi
+            sleep 2
+          done
+          echo "健康检查失败，容器日志:"; docker logs openhub-ci; exit 1
+
+      - name: 清理
+        if: always()
+        run: docker rm -f openhub-ci 2>/dev/null || true
