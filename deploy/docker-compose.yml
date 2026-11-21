@@ -1,0 +1,21 @@
+services:
+  openhub:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: openhub:latest
+    container_name: openhub
+    restart: unless-stopped
+    ports:
+      - "${OPENHUB_PORT:-8080}:8080"
+    env_file:
+      - .env
+    volumes:
+      # 数据（DB、上传的 APK）持久化；私钥单独挂，绝不进镜像层
+      - ../data:/app/data
+      - ${OPENHUB_KEYS_DIR:-./keys}:/app/keys:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8080/api/v1/core/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

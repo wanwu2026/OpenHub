@@ -1,0 +1,15 @@
+[Unit]
+Description=OpenHub Server
+After=network.target
+
+[Service]
+Type=simple
+User=openhub
+Group=openhub
+WorkingDirectory=/opt/openhub
+EnvironmentFile=/opt/openhub/deploy/.env
+ExecStart=/opt/openhub/.venv/bin/uvicorn app:app --host 0.0.0.0 --port 8080
+Restart=unless-stopped
+
+[Install]
+WantedBy=multi-user.target

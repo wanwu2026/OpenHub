@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OpenHub 管理后台</title>
+  <link rel="stylesheet" href="/static/admin.css">
+</head>
+<body>
+  <header><h1>OpenHub</h1><span class="badge" id="api-version">v1</span></header>
+  <main>
+    <section class="card">
+      <h2>服务状态</h2>
+      <pre id="health">加载中…</pre>
+    </section>
+    <section class="card">
+      <h2>插件</h2>
+      <ul id="plugins"><li>加载中…</li></ul>
+    </section>
+    <section class="card">
+      <h2>产物管理（APK）</h2>
+      <p class="muted">上传 APK、记录版本/渠道/签名指纹——界面占位，逻辑待实现。</p>
+      <form id="artifact-form">
+        <input name="version" placeholder="版本 1.0.0" required>
+        <input name="channel" placeholder="渠道 official" required>
+        <input name="signer_fingerprint" placeholder="签名证书 SHA-256" required>
+        <button type="submit">登记产物</button>
+      </form>
+    </section>
+  </main>
+  <script>
+    fetch('/api/v1/core/health').then(r => r.json()).then(d => {
+      document.getElementById('health').textContent = JSON.stringify(d, null, 2);
+      const list = document.getElementById('plugins');
+      const ps = (d.data && d.data.plugins) || [];
+      list.innerHTML = ps.length ? ps.map(p => `<li>${p}</li>`).join('') : '<li class="muted">无已启用插件</li>';
+    }).catch(e => { document.getElementById('health').textContent = '错误: ' + e; });
+    document.getElementById('artifact-form').addEventListener('submit', e => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(e.target));
+      fetch('/api/v1/core/artifacts', {
+        method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)
+      }).then(r => r.json()).then(d => alert(JSON.stringify(d, null, 2)));
+    });
+  </script>
+</body>
+</html>

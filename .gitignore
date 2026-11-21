@@ -1,0 +1,20 @@
+# 运行时数据（私钥、数据库、上传的 APK 绝不入库）
+data/
+*.db
+*.db-journal
+*.pem
+*.key
+*.jks
+*.keystore
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# 部署生成物
+deploy/.env
+deploy/*.service
+!deploy/*.service.example
