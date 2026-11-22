@@ -80,6 +80,7 @@
 | GET | `/api/v1/core/keys` | 列出 API Key（管理接口，只显哈希前缀，无明文） |
 | POST | `/api/v1/core/keys` | 创建 API Key（管理接口，`{"label","scope"}`，明文仅此一次返回） |
 | POST | `/api/v1/core/keys/{id}/revoke` | 吊销 API Key（管理接口） |
+| GET | `/api/v1/core/overview` | 管理看板聚合（管理接口）：一次返回 `cardkey/update/announce/crash` 四插件列表 + `errors`，供 Web UI 单请求渲染。各插件读取失败只记入 `errors` 不影响其余 |
 
 **API Key 安全约定**：库中只存 `SHA-256(key)`，永不存明文；明文仅在创建响应里返回一次，之后无法找回，丢失只能新建。审计日志只记匹配到的 `key_id`，不记 token 本身。首次安装时 `.env` 里的 bootstrap 凭据（Admin Token / 初始 API Key）保留，用于 DB 为空时启动并创建更多 key；可随时通过管理接口吊销库内 key，bootstrap 凭据的轮换通过改 `.env` 完成。
 

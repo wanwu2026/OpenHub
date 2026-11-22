@@ -30,6 +30,7 @@ POST /api/v1/announce/publish     发布公告（服务端签名，管理接口�
 GET  /api/v1/announce/list        客户端拉公告（逐条验签）
 POST /api/v1/core/keys            创建 API Key（明文仅回一次）
 GET  /api/v1/core/audit           查询审计日志（管理接口）
+GET  /api/v1/core/overview        管理看板聚合（四插件数据一次取回）
 ```
 
 ## 一次性部署（原型）

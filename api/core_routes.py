@@ -79,3 +79,31 @@ def get_audit(request: Request, limit: int = 100, offset: int = 0, path: str | N
     require_admin(request)
     events = audit.query(limit=limit, offset=offset, path_prefix=path)
     return ok({"events": events, "count": len(events)}, request)
+
+
+# ---- 管理看板聚合（一次取四插件数据，供 Web UI 渲染）----
+@router.get("/overview")
+def overview(request: Request):
+    """聚合四个插件的只读列表，UI 只需一个 admin token + 一次请求即可渲染看板。
+    直接实例化各 Store（其 __init__ 均为幂等 CREATE TABLE IF NOT EXISTS），
+    不依赖插件是否已 on_enable，也不触碰插件的私有 _store 变量。"""
+    require_admin(request)
+    result = {"cardkey": [], "update": [], "announce": [], "crash": [], "errors": {}}
+
+    def collect(name, fn):
+        try:
+            return fn()
+        except Exception as exc:
+            result["errors"][name] = str(exc)
+            return []
+
+    from plugins.cardkey.store import CardStore
+    from plugins.update.store import UpdateStore
+    from plugins.announce.store import AnnounceStore
+    from plugins.crash.store import CrashStore
+
+    result["cardkey"] = collect("cardkey", lambda: CardStore().list_codes())
+    result["update"] = collect("update", lambda: UpdateStore().list())
+    result["announce"] = collect("announce", lambda: AnnounceStore().list(limit=200))
+    result["crash"] = collect("crash", lambda: CrashStore().query(limit=200))
+    return ok(result, request)

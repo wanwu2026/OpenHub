@@ -30,6 +30,7 @@ POST /api/v1/announce/publish      publish an announcement (server-signed, admin
 GET  /api/v1/announce/list         client fetch announcements (verify each signature)
 POST /api/v1/core/keys             create an API key (plaintext returned once)
 GET  /api/v1/core/audit            query audit log (admin only)
+GET  /api/v1/core/overview         admin dashboard aggregate (all four plugins in one call)
 ```
 
 ## One-command deployment

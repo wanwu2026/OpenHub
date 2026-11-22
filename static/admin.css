@@ -10,3 +10,17 @@ pre { background: #0b0d11; padding: 12px; border-radius: 6px; overflow-x: auto; 
 input { background: #0b0d11; border: 1px solid #2a2e38; color: #e6e8eb; padding: 8px; border-radius: 6px; margin-right: 8px; }
 button { background: #2d7d46; color: #fff; border: 0; padding: 8px 16px; border-radius: 6px; cursor: pointer; }
 .muted { color: #8b909c; font-size: 13px; }
+
+/* 管理看板增强 */
+.token-box { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.token-box input { width: 180px; }
+.tabs { display: flex; gap: 8px; }
+.tab { background: #23262e; color: #c8ccd4; }
+.tab.active { background: #3b82f6; color: #fff; }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+.inline-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+.list { display: grid; gap: 6px; margin-top: 10px; max-height: 320px; overflow-y: auto; }
+.row { background: #0b0d11; border: 1px solid #23262e; border-radius: 6px; padding: 8px 10px; font-size: 13px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.row code { color: #7dd3fc; }
+.resolve { background: #b45309; padding: 4px 10px; font-size: 12px; }

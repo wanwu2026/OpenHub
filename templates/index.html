@@ -7,41 +7,185 @@
   <link rel="stylesheet" href="/static/admin.css">
 </head>
 <body>
-  <header><h1>OpenHub</h1><span class="badge" id="api-version">v1</span></header>
+  <header>
+    <h1>OpenHub <span class="badge" id="api-version">v1</span></h1>
+    <div class="token-box">
+      <input id="admin-token" type="password" placeholder="Admin Token" autocomplete="off">
+      <button id="token-save">保存令牌</button>
+      <span id="token-state" class="muted"></span>
+    </div>
+  </header>
   <main>
     <section class="card">
       <h2>服务状态</h2>
       <pre id="health">加载中…</pre>
     </section>
-    <section class="card">
-      <h2>插件</h2>
-      <ul id="plugins"><li>加载中…</li></ul>
-    </section>
-    <section class="card">
-      <h2>产物管理（APK）</h2>
-      <p class="muted">上传 APK、记录版本/渠道/签名指纹——界面占位，逻辑待实现。</p>
-      <form id="artifact-form">
-        <input name="version" placeholder="版本 1.0.0" required>
-        <input name="channel" placeholder="渠道 official" required>
-        <input name="signer_fingerprint" placeholder="签名证书 SHA-256" required>
-        <button type="submit">登记产物</button>
+
+    <nav class="tabs">
+      <button class="tab active" data-tab="cardkey">卡密</button>
+      <button class="tab" data-tab="update">更新</button>
+      <button class="tab" data-tab="announce">公告</button>
+      <button class="tab" data-tab="crash">崩溃</button>
+    </nav>
+
+    <section class="card tab-panel active" id="panel-cardkey">
+      <h2>卡密（cardkey）</h2>
+      <form id="cardkey-form" class="inline-form">
+        <input name="expires" placeholder="到期日期，留空=永不过期" value="">
+        <input name="max_activations" type="number" value="1" title="最大激活次数">
+        <button type="submit">发卡</button>
       </form>
+      <div class="muted">产品由服务端 cardkey_product 配置决定；返回的卡密在弹窗里显示，复制保存。</div>
+      <div id="cardkey-list" class="list">需 Admin Token</div>
+    </section>
+
+    <section class="card tab-panel" id="panel-update">
+      <h2>更新清单（update）</h2>
+      <form id="update-form" class="inline-form">
+        <input name="product" placeholder="产品 demo_app" value="demo_app">
+        <input name="version" placeholder="版本 1.1.0" required>
+        <input name="version_code" type="number" placeholder="版本号 11" required>
+        <input name="signer_fingerprint" placeholder="签名证书 SHA-256（64 位 hex）" required>
+        <input name="apk_url" placeholder="https://cdn/app.apk" required>
+        <input name="sha256" placeholder="APK sha256（64 位 hex）" required>
+        <input name="notes" placeholder="更新说明（可中文）">
+        <button type="submit">发布版本</button>
+      </form>
+      <div id="update-list" class="list">需 Admin Token</div>
+    </section>
+
+    <section class="card tab-panel" id="panel-announce">
+      <h2>公告（announce）</h2>
+      <form id="announce-form" class="inline-form">
+        <input name="product" placeholder="产品 demo_app" value="demo_app">
+        <input name="title" placeholder="标题" required>
+        <input name="content" placeholder="内容（可中文）" required>
+        <select name="level"><option>info</option><option>warn</option><option>urgent</option></select>
+        <label><input type="checkbox" name="force_popup"> 强制弹窗</label>
+        <button type="submit">发布公告</button>
+      </form>
+      <div id="announce-list" class="list">需 Admin Token</div>
+    </section>
+
+    <section class="card tab-panel" id="panel-crash">
+      <h2>崩溃上报（crash）</h2>
+      <div class="muted">服务端已脱敏；点「已处理」标记。</div>
+      <div id="crash-list" class="list">需 Admin Token</div>
+    </section>
+
+    <section class="card">
+      <h2>API Key 管理</h2>
+      <form id="key-form" class="inline-form">
+        <input name="label" placeholder="标签" required>
+        <select name="scope"><option value="client">client</option><option value="admin">admin</option></select>
+        <button type="submit">创建 Key</button>
+      </form>
+      <pre id="key-result" class="muted"></pre>
     </section>
   </main>
+
   <script>
-    fetch('/api/v1/core/health').then(r => r.json()).then(d => {
-      document.getElementById('health').textContent = JSON.stringify(d, null, 2);
-      const list = document.getElementById('plugins');
-      const ps = (d.data && d.data.plugins) || [];
-      list.innerHTML = ps.length ? ps.map(p => `<li>${p}</li>`).join('') : '<li class="muted">无已启用插件</li>';
-    }).catch(e => { document.getElementById('health').textContent = '错误: ' + e; });
-    document.getElementById('artifact-form').addEventListener('submit', e => {
-      e.preventDefault();
-      const data = Object.fromEntries(new FormData(e.target));
-      fetch('/api/v1/core/artifacts', {
-        method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)
-      }).then(r => r.json()).then(d => alert(JSON.stringify(d, null, 2)));
+    const $ = id => document.getElementById(id);
+    const API = '/api/v1';
+    let token = localStorage.getItem('oh_admin_token') || '';
+    $('admin-token').value = token;
+    const auth = () => ({'Content-Type':'application/json', 'Authorization':'Bearer ' + token});
+
+    function setTokenState() {
+      $('token-state').textContent = token ? '已保存' : '未设置';
+    }
+    setTokenState();
+    $('token-save').onclick = () => {
+      token = $('admin-token').value.trim();
+      localStorage.setItem('oh_admin_token', token);
+      setTokenState();
+      loadAll();
+    };
+
+    // 跨 tab 切换
+    document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
+      document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      $('panel-' + t.dataset.tab).classList.add('active');
     });
+
+    // 公开的健康检查
+    fetch(API + '/core/health').then(r => r.json()).then(d => {
+      $('health').textContent = JSON.stringify(d, null, 2);
+    }).catch(e => { $('health').textContent = '错误: ' + e; });
+
+    function esc(s) {
+      return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    }
+
+    function renderList(el, rows, fmt, emptyMsg) {
+      if (!Array.isArray(rows) || rows.length === 0) { el.innerHTML = '<div class="muted">' + (emptyMsg || '空') + '</div>'; return; }
+      el.innerHTML = rows.map(fmt).join('');
+    }
+
+    function loadAll() {
+      if (!token) return;
+      fetch(API + '/core/overview', {headers: auth()}).then(r => r.json()).then(d => {
+        if (!d.ok) throw new Error(JSON.stringify(d));
+        const x = d.data;
+        renderList($('cardkey-list'), x.cardkey, r =>
+          `<div class="row"><code>${esc(r.code)}</code> 设备=${esc(r.device_id || '-')} 激活=${r.activations}/${r.max_activations} ${r.revoked?'[已吊销]':''}</div>`);
+        renderList($('update-list'), x.update, r =>
+          `<div class="row"><b>${esc(r.product)}</b> ${esc(r.version)} (code=${r.version_code}) 渠道=${esc(r.channel)} 指纹=${esc(r.signer_fingerprint||'').slice(0,12)}…</div>`);
+        renderList($('announce-list'), x.announce, r =>
+          `<div class="row"><b>${esc(r.title)}</b> [${esc(r.level)}] ${r.force_popup?'强制':''} — ${esc(r.content)}</div>`);
+        renderList($('crash-list'), x.crash, r =>
+          `<div class="row">#${r.id} ${esc(r.app_id)} [${esc(r.status)}] <code>${esc((r.stacktrace||'').slice(0,120))}</code> ` +
+          `<button class="resolve" data-id="${r.id}">已处理</button></div>`);
+        document.querySelectorAll('.resolve').forEach(b => b.onclick = () => resolveCrash(b.dataset.id));
+        if (x.errors && Object.keys(x.errors).length) {
+          console.warn('overview 部分数据失败:', x.errors);
+        }
+      }).catch(e => {
+        ['cardkey','update','announce','crash'].forEach(k => $(''+k+'-list').textContent = '加载失败: ' + e);
+      });
+    }
+    loadAll();
+
+    function resolveCrash(id) {
+      fetch(API + '/crash/' + id + '/resolve', {method:'POST', headers: auth()})
+        .then(r => r.json()).then(() => loadAll()).catch(e => alert('失败: ' + e));
+    }
+
+    function bindForm(id, path, build, after) {
+      $(id).addEventListener('submit', e => {
+        e.preventDefault();
+        if (!token) { alert('请先保存 Admin Token'); return; }
+        const body = build(new FormData(e.target));
+        fetch(API + path, {method:'POST', headers: auth(), body: JSON.stringify(body)})
+          .then(r => r.json()).then(d => { alert(JSON.stringify(d, null, 2)); if (after) after(); })
+          .catch(err => alert('失败: ' + err));
+      });
+    }
+
+    bindForm('cardkey-form', '/cardkey/issue', f => {
+      const expires = f.get('expires') || '';
+      let exp = 'never';
+      if (expires) { const t = Date.parse(expires); if (!isNaN(t)) exp = String(t); }
+      return {expires: exp, max_activations: parseInt(f.get('max_activations') || '1', 10)};
+    }, null); // 发卡不需刷新列表（code 只回一次，在 alert 里）
+
+    bindForm('update-form', '/update/publish', f => ({
+      product: f.get('product'), version: f.get('version'),
+      version_code: parseInt(f.get('version_code'), 10),
+      signer_fingerprint: f.get('signer_fingerprint'), apk_url: f.get('apk_url'),
+      sha256: f.get('sha256'), notes: f.get('notes') || ''
+    }), loadAll);
+
+    bindForm('announce-form', '/announce/publish', f => ({
+      product: f.get('product'), title: f.get('title'), content: f.get('content'),
+      level: f.get('level'), force_popup: f.get('force_popup') === 'on'
+    }), loadAll);
+
+    bindForm('key-form', '/core/keys', f => ({
+      label: f.get('label'), scope: f.get('scope')
+    }), null); // 明文只在 alert 里回一次
   </script>
 </body>
 </html>
