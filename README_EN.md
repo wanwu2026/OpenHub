@@ -4,14 +4,13 @@
 
 [中文](README.md) | [English](README_EN.md)
 
-A backend platform you can **deploy to a server in one command**: a web admin UI, APK/artifact management, and pluggable business modules — providing standardized backend services for the existing CardKey client and future SDKs.
+A backend platform you can **deploy to a server in one command**: a web admin UI, APK/artifact management, and pluggable business modules.
 
 **Core design**: kernel + plugins. Write the kernel once (auth, devices, config delivery, artifact hosting, audit, plugin engine). Adding a client = adding a plugin; the kernel never changes.
 
 ## The contract (start here)
 
 ```
-docs/ECOSYSTEM.md         # three-repo overview (relationship map + adoption route, start here)
 docs/API_CONTRACT.md      # external spec (most important)
 docs/ARCHITECTURE.md      # architecture and directory responsibilities
 ```
