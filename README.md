@@ -25,6 +25,8 @@ POST /api/v1/update/publish       发布版本清单（管理接口，带签名�
 GET  /api/v1/update/check         客户端查更新（验签 + 指纹双校验）
 POST /api/v1/crash/report         崩溃上报（脱敏 + 限流）
 GET  /api/v1/crash/reports        查询崩溃（管理接口）
+POST /api/v1/announce/publish     发布公告（服务端签名，管理接口）
+GET  /api/v1/announce/list        客户端拉公告（逐条验签）
 POST /api/v1/core/keys            创建 API Key（明文仅回一次）
 GET  /api/v1/core/audit           查询审计日志（管理接口）
 ```

@@ -25,6 +25,8 @@ POST /api/v1/update/publish        publish a signed version manifest (admin)
 GET  /api/v1/update/check          check for updates (signature + fingerprint)
 POST /api/v1/crash/report          submit a crash report (redacted + rate-limited)
 GET  /api/v1/crash/reports         query crash reports (admin)
+POST /api/v1/announce/publish      publish an announcement (server-signed, admin)
+GET  /api/v1/announce/list         client fetch announcements (verify each signature)
 POST /api/v1/core/keys             create an API key (plaintext returned once)
 GET  /api/v1/core/audit            query audit log (admin only)
 ```

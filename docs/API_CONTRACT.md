@@ -130,6 +130,20 @@
 - 堆栈自动脱敏：邮箱 → `[EMAIL]`、手机号 → `[PHONE]`、`Bearer xxx` → `Bearer [REDACTED]`、长十六进制串 → `[HEX]`；
 - 设备限流：10 分钟窗口内最多 20 条，超限返回 `CORE_RATE_LIMITED`（retryable=true）。
 
+## 7.3 announce 插件接口（公告）
+
+| 方法 | 路径 | 鉴权 | 说明 |
+|---|---|---|---|
+| POST | `/api/v1/announce/publish` | Admin | 发布公告：请求含 `product/title/content`，可选 `level(info\|warn\|urgent)`/`force_popup`/`published_at`；服务端签名后返回 `id`/`signature` |
+| GET | `/api/v1/announce/list?product=&since=&limit=&offset=` | API Key | 客户端拉公告（含每条 `signature`），`since` 为毫秒时间戳增量过滤 |
+| GET | `/api/v1/announce/verify/{id}?public_key_base64=` | Admin | 服务端自检：验某条公告签名是否有效 |
+
+签名与安全约定：
+- 每条公告单独签名，算法 `RSA-SHA256`，密钥同 update 插件（`OPENHUB_UPDATE_PRIVATE_KEY`，未配置回退 cardkey）。
+- 签名字节 = 对 `{product,title,content,level,force_popup,published_at}` 的规范化 JSON（`sort_keys=True`、紧凑分隔、默认 `ensure_ascii=True`）做签；客户端用同法重建字节验签，逐条验证，防假公告。
+- 数据库自增 `id` 不进签名体，仅供客户端做"已读去重"（改 id 最多导致重复弹窗，非安全问题）。
+- 客户端应本地记录已展示的公告 id，按 `level` 决定是否强弹；公告内容属服务端数据。
+
 ## 8. 兼容例外：CardKey 客户端的扁平响应
 
 为支持**之前已开发的客户端**，有一处有意偏离统一包络：
