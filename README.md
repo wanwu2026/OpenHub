@@ -11,6 +11,7 @@
 ## 快速看契约
 
 ```
+docs/ECOSYSTEM.md         # 三仓库生态总览（关系图 + 接入路线，先看这个）
 docs/API_CONTRACT.md      # 对外规范（最重要）
 docs/ARCHITECTURE.md      # 架构与目录职责
 ```

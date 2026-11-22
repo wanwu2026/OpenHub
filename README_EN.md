@@ -11,6 +11,7 @@ A backend platform you can **deploy to a server in one command**: a web admin UI
 ## The contract (start here)
 
 ```
+docs/ECOSYSTEM.md         # three-repo overview (relationship map + adoption route, start here)
 docs/API_CONTRACT.md      # external spec (most important)
 docs/ARCHITECTURE.md      # architecture and directory responsibilities
 ```
