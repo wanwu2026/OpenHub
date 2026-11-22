@@ -57,13 +57,3 @@ FastAPI 的 `/docs` 自动生成 OpenAPI，直接当契约文档用。
 - 裸机：venv + pip + systemd（无 systemd 时给手动启动命令）。
 
 私钥与数据库都在 `data/`，被 `.gitignore` 排除，不进镜像层、不进仓库。
-
-## 当前状态（诚实标注）
-
-- ✅ 已真启动服务（本地 uvicorn + TestClient），cardkey 发卡/验卡/一机一码/封禁全链路通过；17 项测试全绿（cardkey 4 + 内核 6 + update/crash 7）。
-- ✅ 鉴权落库：API Key 只存 SHA-256 哈希，明文仅创建时返回一次，可管理/吊销；bootstrap 凭据保留用于首次安装。
-- ✅ 审计写入：每次请求记 method/path/status/key_id（不记 token），管理接口可查。
-- ✅ CI：`.github/workflows/test.yml` 跑 compileall + pytest；`.github/workflows/docker-build.yml` 在 ubuntu runner 上真跑 `docker build` + compose 配置校验 + 冒烟健康检查。
-- ✅ update/crash 已填实（详见契约 §7.1/§7.2）。
-- ⚠️ 本机无 Docker daemon（无 docker/podman/任意运行时、无 socket、非 root），Docker 路径靠 Actions 真机构建验证，本机只做静态语法校验（pyyaml + bash -n）。
-- 下一步：git 初始化发布（需用户确认凭据与仓库名，**尚未 push**）。

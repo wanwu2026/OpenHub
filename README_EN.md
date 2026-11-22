@@ -8,18 +8,6 @@ A backend platform you can **deploy to a server in one command**: a web admin UI
 
 **Core design**: kernel + plugins. Write the kernel once (auth, devices, config delivery, artifact hosting, audit, plugin engine). Adding a client = adding a plugin; the kernel never changes.
 
-## Current status: kernel working + three plugins implemented
-
-- ✅ API contract (`docs/API_CONTRACT.md`): unified routes / auth / response envelope / error codes / versioning + the CardKey compatibility exception
-- ✅ Kernel (config, plugin protocol, registry, database, auth, errors)
-- ✅ **cardkey plugin**: signing core and state machine (one-device-one-code / activation limits / revocation / expiry) ported from CardKeySDK/demo-backend. `verify` keeps the flat response format for existing clients; admin routes use the unified envelope.
-- ✅ **update plugin**: signed version manifests, mandatory APK signing-certificate fingerprint (contract §7 double check).
-- ✅ **crash plugin**: crash reports with PII redaction (email / phone / Bearer token / long hex) + per-device rate limit + batch + resolution state.
-- ✅ **Auth persisted + audit**: API keys store only SHA-256 hashes (plaintext shown once at creation), manageable and revocable; every request writes an audit record queryable via the admin API. Bootstrap credentials are kept for first install.
-- ✅ One-command deployment (install.sh + Docker Compose + systemd), hardened non-root Dockerfile + `.dockerignore`
-- ✅ **End-to-end verification**: 17 tests green (4 cardkey + 6 kernel + 7 update/crash).
-- ⚠️ No Docker daemon on this machine — the Docker path is verified by GitHub Actions (ubuntu runner has Docker): real `docker build` + smoke test; only static syntax checks run locally.
-
 ## The contract (start here)
 
 ```
@@ -67,15 +55,6 @@ python -m pytest tests/ -v
 1. Create `plugins/<name>/` with a `plugin.py` defining a `Plugin` subclass.
 2. Implement `name`, `routes()`, `health()`, `on_enable()` / `on_disable()`.
 3. Add `<name>` to `OPENHUB_ENABLED_PLUGINS`. The kernel is untouched.
-
-## Next
-
-1. ~~Confirm skeleton/contract direction~~ ✅
-2. ~~Migrate CardKeySDK/demo-backend into `plugins/cardkey`~~ ✅
-3. ~~Persist auth + write audit~~ ✅
-4. ~~Fill in the update / crash plugins~~ ✅
-5. ~~Add CI + bilingual docs~~ ✅
-6. Publish the repo (needs the user to confirm credentials and repo name — **not pushed yet**)
 
 ## License
 
