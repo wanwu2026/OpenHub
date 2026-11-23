@@ -29,7 +29,11 @@ POST /api/v1/announce/publish      publish an announcement (server-signed, admin
 GET  /api/v1/announce/list         client fetch announcements (verify each signature)
 POST /api/v1/core/keys             create an API key (plaintext returned once)
 GET  /api/v1/core/audit            query audit log (admin only)
-GET  /api/v1/core/overview         admin dashboard aggregate (all four plugins in one call)
+GET  /api/v1/core/overview         admin dashboard aggregate (all plugins in one call)
+POST /api/v1/auth/register         end-user signup (for chat)
+POST /api/v1/auth/login            end-user login -> session token
+GET  /api/v1/chat/conversations    chat conversation list (session token)
+WS   /api/v1/chat/ws/{cid}         realtime messages (open /chat in browser)
 ```
 
 ## One-command deployment

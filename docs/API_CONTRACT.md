@@ -168,3 +168,36 @@
 原因：现有 CardKey SDK 的 `HttpRemoteVerifier` 只解析扁平字段，且客户端已发布、不能强制升级。
 这是**有意的兼容例外**，不是疏忽；cardkey 插件的管理接口（`/issue` `/revoke` `/codes`）仍走统一包络。
 新客户端一律用统一包络；只有 cardkey 的 verify 保留扁平格式。新增此类例外必须在契约登记，禁止悄悄加。
+
+## 9. 终端用户认证（auth，独立于开发者 API Key）
+
+聊天室等终端用户功能使用**用户体系**，与开发者 API Key（§2）是两套独立凭据：API Key 标识集成方，session token 标识终端用户。
+
+| 方法 | 路径 | 鉴权 | 说明 |
+|---|---|---|---|
+| POST | `/api/v1/auth/register` | 公开 | `{"username"(3-32),"password"(≥6),"email"?}`，密码存 PBKDF2-HMAC-SHA256 + 随机盐（210k 轮），绝不明文 |
+| POST | `/api/v1/auth/login` | 公开 | `{"username","password"}` → `{"token","token_type":"bearer"}`，token 只回一次 |
+| GET | `/api/v1/auth/me` | session token | 当前用户 `{"user":{id,username,email}}` |
+| POST | `/api/v1/auth/logout` | session token | 使当前会话失效 |
+| GET | `/api/v1/auth/user-by-name?username=` | session token | 按用户名查 `{id,username}`（发起单聊/建群用），只回公开字段 |
+| GET | `/api/v1/auth/users` | Admin | 用户列表（id/username/email/status/created_at，无密码哈希） |
+| POST | `/api/v1/auth/users/{id}/disable` | Admin | 禁用用户（其会话随即失效） |
+| POST | `/api/v1/auth/users/{id}/enable` | Admin | 启用用户 |
+
+session token 用 `secrets.token_urlsafe(32)`，库中只存 SHA-256 哈希，7 天过期；禁用用户后其 token 立即失效。
+
+## 10. chat 聊天插件（终端用户实时消息）
+
+| 方法 | 路径 | 鉴权 | 说明 |
+|---|---|---|---|
+| GET | `/api/v1/chat/conversations` | session token | 会话列表（含未读数、末条消息） |
+| POST | `/api/v1/chat/direct` | session token | `{"user_id"}` → 单聊 conv_id（幂等，两人得同一 id） |
+| POST | `/api/v1/chat/groups` | session token | `{"name","member_ids":[]}` → 群聊 conv_id，创建者为群主 |
+| GET | `/api/v1/chat/messages/{cid}?limit=&before_id=` | session token | 历史消息（时间正序，分页；非成员 401） |
+| POST | `/api/v1/chat/messages/{cid}` | session token | `{"kind":"text|image|file","content"}` 发消息并广播 |
+| POST | `/api/v1/chat/messages/{cid}/read` | session token | `{"message_id"}` 标记已读 |
+| WS | `/api/v1/chat/ws/{cid}?token=` | session token（查询参数） | WebSocket 实时：连上先收 `history`，之后收 `message` 广播；非法 token/非成员拒绝 |
+
+单聊 conv_id = `d_` + sha256(两用户 id 排序)[:24]，保证双方一致；群聊 conv_id = `g_` + 随机 hex。
+消息落库保证离线可补：WS 连上先推最近 50 条，REST 可分页拉历史。连接表在内存（单进程），多实例部署需接 Redis pub/sub（当前版本边界）。
+Web 聊天室页面：`/chat`（浏览器打开，注册登录 + 单聊群聊 + 实时收发）。

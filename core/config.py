@@ -26,7 +26,7 @@ class Settings:
     initial_api_key = os.getenv("OPENHUB_INITIAL_API_KEY", "ohk_dev-CHANGE-ME")
     enabled_plugins = [
         p.strip()
-        for p in os.getenv("OPENHUB_ENABLED_PLUGINS", "cardkey,update,crash,announce").split(",")
+        for p in os.getenv("OPENHUB_ENABLED_PLUGINS", "cardkey,update,crash,announce,chat").split(",")
         if p.strip()
     ]
 

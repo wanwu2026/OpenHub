@@ -30,6 +30,10 @@ GET  /api/v1/announce/list        客户端拉公告（逐条验签）
 POST /api/v1/core/keys            创建 API Key（明文仅回一次）
 GET  /api/v1/core/audit           查询审计日志（管理接口）
 GET  /api/v1/core/overview        管理看板聚合（四插件数据一次取回）
+POST /api/v1/auth/register        终端用户注册（聊天室用）
+POST /api/v1/auth/login           终端用户登录 → session token
+GET  /api/v1/chat/conversations   聊天会话列表（需 session token）
+WS   /api/v1/chat/ws/{cid}        实时消息（浏览器打开 /chat）
 ```
 
 ## 一次性部署（原型）

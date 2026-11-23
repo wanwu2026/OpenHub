@@ -78,3 +78,61 @@ class Artifact(Base):
     filename: Mapped[str] = mapped_column(String(256), nullable=False, default="")
     size: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
     created_at: Mapped[int] = mapped_column(BigInteger, nullable=False, default=now_ms)
+
+
+class User(Base):
+    """终端用户（聊天室用）：密码只存 PBKDF2 盐+哈希，绝不存明文。"""
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    username: Mapped[str] = mapped_column(String(32), unique=True, index=True, nullable=False)
+    email: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    password_salt: Mapped[str] = mapped_column(String(64), nullable=False)
+    password_hash: Mapped[str] = mapped_column(String(128), nullable=False)
+    status: Mapped[int] = mapped_column(Integer, nullable=False, default=1)  # 1=正常 0=禁用
+    created_at: Mapped[int] = mapped_column(BigInteger, nullable=False, default=now_ms)
+
+
+class Session(Base):
+    """登录会话：只存 token 哈希，明文 token 仅登录响应返回一次。"""
+    __tablename__ = "sessions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(Integer, index=True, nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True, nullable=False)
+    created_at: Mapped[int] = mapped_column(BigInteger, nullable=False, default=now_ms)
+    expires_at: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)
+
+
+class ChatMessage(Base):
+    """聊天消息：会话内的一条消息（单聊/群聊共用）。"""
+    __tablename__ = "chat_messages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    conv_id: Mapped[str] = mapped_column(String(64), index=True, nullable=False)  # 会话 ID
+    sender_id: Mapped[int] = mapped_column(Integer, index=True, nullable=False)
+    kind: Mapped[str] = mapped_column(String(16), nullable=False, default="text")  # text/image/file
+    content: Mapped[str] = mapped_column(String(8192), nullable=False)
+    created_at: Mapped[int] = mapped_column(BigInteger, index=True, nullable=False)
+
+
+class ChatMember(Base):
+    """会话成员：一个会话有哪些用户（单聊 2 人，群聊 N 人）。"""
+    __tablename__ = "chat_members"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    conv_id: Mapped[str] = mapped_column(String(64), index=True, nullable=False)
+    user_id: Mapped[int] = mapped_column(Integer, index=True, nullable=False)
+    last_read_id: Mapped[int] = mapped_column(Integer, nullable=False, default=0)  # 已读到哪条消息
+    joined_at: Mapped[int] = mapped_column(BigInteger, nullable=False, default=now_ms)
+
+
+class ChatConversation(Base):
+    """会话：type=direct（单聊）/ group（群聊），成员通过 ChatMember 关联。"""
+    __tablename__ = "chat_conversations"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)  # conv_id
+    type: Mapped[str] = mapped_column(String(16), nullable=False, default="direct")
+    name: Mapped[str] = mapped_column(String(128), nullable=False, default="")  # 群名
+    owner_id: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[int] = mapped_column(BigInteger, nullable=False, default=now_ms)

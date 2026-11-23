@@ -8,7 +8,7 @@ from core.db import init_db
 from core.errors import ApiError
 from core.registry import discover
 from core import web
-from api import core_routes
+from api import core_routes, auth_routes
 
 app = FastAPI(title=settings.app_name, version="1.0.0")
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
@@ -53,6 +53,9 @@ def startup():
 
 # 健康检查与内核接口统一由 core_routes 提供（含插件列表）
 app.include_router(core_routes.router, prefix="/api/v1/core")
+
+# 终端用户认证（注册/登录/会话），与开发者 API Key 分属两套体系
+app.include_router(auth_routes.router, prefix="/api/v1/auth")
 
 # Web 管理后台（/ 提供界面；JSON 信息在 /api/v1/core/health）
 app.include_router(web.router)

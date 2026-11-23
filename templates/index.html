@@ -29,6 +29,7 @@
       <button class="tab" data-tab="devices">设备</button>
       <button class="tab" data-tab="config">配置</button>
       <button class="tab" data-tab="artifacts">产物</button>
+      <button class="tab" data-tab="users">用户</button>
     </nav>
 
     <section class="card tab-panel active" id="panel-cardkey">
@@ -93,6 +94,12 @@
         <button type="submit">保存并签名</button>
       </form>
       <div id="config-list" class="list">需 Admin Token</div>
+    </section>
+
+    <section class="card tab-panel" id="panel-users">
+      <h2>用户管理（auth/users）</h2>
+      <div class="muted">终端用户（聊天室账号）。密码只存 PBKDF2 哈希，无明文。</div>
+      <div id="users-list" class="list">需 Admin Token</div>
     </section>
 
     <section class="card tab-panel" id="panel-artifacts">
@@ -181,11 +188,17 @@
           `<div class="row"><b>${esc(r.product)}</b> ${r.enabled?'启用':'停用'} 灰度=${r.rollout_percent}% ${r.force_update?'[强制]':''}</div>`);
         renderList($('artifacts-list'), x.artifacts, r =>
           `<div class="row"><b>${esc(r.product)}</b> ${esc(r.version)} (code=${r.version_code}) 渠道=${esc(r.channel)} 大小=${r.size}B 指纹=${esc(r.signer_fingerprint||'').slice(0,12)}…</div>`);
+        // 用户列表单独请求（auth 路由，不在 overview 里）
+        fetch(API + '/auth/users', {headers: auth()}).then(r => r.json()).then(ud => {
+          if (ud.ok) renderList($('users-list'), ud.data.users, u =>
+            `<div class="row"><b>${esc(u.username)}</b> ${esc(u.email||'-')} [${u.status===1?'正常':'禁用'}] ` +
+            `<button class="mini" data-uid="${u.id}" data-act="${u.status===1?'disable':'enable'}">${u.status===1?'禁用':'启用'}</button></div>`);
+        }).catch(() => {});
         if (x.errors && Object.keys(x.errors).length) {
           console.warn('overview 部分数据失败:', x.errors);
         }
       }).catch(e => {
-        ['cardkey','update','announce','crash','devices','config','artifacts'].forEach(k => $(''+k+'-list').textContent = '加载失败: ' + e);
+        ['cardkey','update','announce','crash','devices','config','artifacts','users'].forEach(k => $(''+k+'-list').textContent = '加载失败: ' + e);
       });
     }
     loadAll();
@@ -240,6 +253,13 @@
         {method:'POST', headers: auth(), body: JSON.stringify(body)})
         .then(r => r.json()).then(d => { alert(JSON.stringify(d, null, 2)); loadAll(); })
         .catch(err => alert('失败: ' + err));
+    });
+
+    // 用户禁用/启用按钮
+    document.addEventListener('click', e => {
+      const b = e.target.closest('.mini'); if (!b) return;
+      fetch(API + '/auth/users/' + b.dataset.uid + '/' + b.dataset.act, {method:'POST', headers:auth()})
+        .then(r => r.json()).then(() => loadAll()).catch(err => alert('失败: ' + err));
     });
 
     // 产物上传：multipart/form-data，单独处理
