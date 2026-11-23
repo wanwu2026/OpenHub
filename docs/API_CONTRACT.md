@@ -186,6 +186,8 @@
 
 session token 用 `secrets.token_urlsafe(32)`，库中只存 SHA-256 哈希，7 天过期；禁用用户后其 token 立即失效。
 
+**登录限流**：同一用户名 5 分钟内失败 5 次 → 锁定 15 分钟（返回 `CORE_RATE_LIMITED` / HTTP 429，`retryable=true`）；登录成功清零计数。计数器在内存（单进程），多实例部署需移到共享存储。过期会话可用 `user_store.purge_expired_sessions()` 清理。
+
 ## 10. chat 聊天插件（终端用户实时消息）
 
 | 方法 | 路径 | 鉴权 | 说明 |

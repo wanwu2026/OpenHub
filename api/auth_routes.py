@@ -5,7 +5,7 @@ from fastapi import APIRouter, Request
 
 from core import user_store
 from core.auth import require_admin
-from core.errors import ok, CORE_VALIDATION, CORE_UNAUTHORIZED, CORE_NOT_FOUND
+from core.errors import ok, CORE_VALIDATION, CORE_UNAUTHORIZED, CORE_NOT_FOUND, CORE_RATE_LIMITED
 
 router = APIRouter()
 
@@ -36,9 +36,15 @@ async def register(request: Request):
 @router.post("/login")
 async def login(request: Request):
     body = await request.json()
-    token = user_store.login(body.get("username", ""), body.get("password", ""))
+    username = body.get("username", "")
+    remaining = user_store.login_lock_remaining(username)
+    if remaining:
+        raise CORE_RATE_LIMITED(f"尝试过多，请 {remaining} 秒后重试")
+    token = user_store.login(username, body.get("password", ""))
     if not token:
+        user_store.record_login_fail(username)
         raise CORE_UNAUTHORIZED("用户名或密码错误")
+    user_store.record_login_success(username)
     return ok({"token": token, "token_type": "bearer"}, request)
 
 

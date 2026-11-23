@@ -15,6 +15,44 @@ from core.models import now_ms
 PBKDF2_ROUNDS = 210_000     # OWASP 2023 建议 SHA256 ≥ 210k
 SESSION_TTL_MS = 7 * 24 * 3600 * 1000   # 7 天
 
+# 登录失败限流（内存，单进程）：同用户名 5 分钟内失败 ≥5 次 → 锁 15 分钟
+_LOGIN_FAILS: dict[str, list[int]] = {}
+_LOGIN_LOCK: dict[str, int] = {}
+FAIL_WINDOW_MS = 5 * 60 * 1000
+LOCK_MS = 15 * 60 * 1000
+MAX_FAILS = 5
+
+
+def login_lock_remaining(username: str) -> int:
+    """返回剩余锁定秒数（0=未锁定）。"""
+    until = _LOGIN_LOCK.get(username, 0)
+    if until <= now_ms():
+        _LOGIN_LOCK.pop(username, None)
+        return 0
+    return (until - now_ms()) // 1000 + 1
+
+
+def record_login_fail(username: str):
+    now = now_ms()
+    fails = [t for t in _LOGIN_FAILS.get(username, []) if t > now - FAIL_WINDOW_MS]
+    fails.append(now)
+    _LOGIN_FAILS[username] = fails
+    if len(fails) >= MAX_FAILS:
+        _LOGIN_LOCK[username] = now + LOCK_MS
+        _LOGIN_FAILS.pop(username, None)
+
+
+def record_login_success(username: str):
+    _LOGIN_FAILS.pop(username, None)
+    _LOGIN_LOCK.pop(username, None)
+
+
+def purge_expired_sessions() -> int:
+    """删除过期会话，返回删除条数。"""
+    with engine.begin() as c:
+        cur = c.exec_driver_sql("DELETE FROM sessions WHERE expires_at < ?", (now_ms(),))
+        return cur.rowcount
+
 
 def _hash_password(password: str, salt: bytes | None = None) -> tuple[str, str]:
     salt = salt or secrets.token_bytes(16)

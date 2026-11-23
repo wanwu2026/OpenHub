@@ -107,6 +107,17 @@ class TestAuth(unittest.TestCase):
             "username": "bob", "password": "123"})
         self.assertEqual(r.status_code, 422)
 
+    def test_05_login_rate_limit(self):
+        # 连续 5 次错误密码后锁定
+        for _ in range(5):
+            r = self.client.post("/api/v1/auth/login", json={
+                "username": "bob", "password": "wrong"})
+            self.assertEqual(r.status_code, 401)
+        locked = self.client.post("/api/v1/auth/login", json={
+            "username": "bob", "password": "wrong"})
+        self.assertEqual(locked.status_code, 429)
+        user_store.record_login_success("bob")  # 清理，避免影响其他测试
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

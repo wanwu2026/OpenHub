@@ -34,7 +34,7 @@ HTTP 请求
 | `plugins/announce/` | 公告插件（服务端逐条签名 + 客户端验签 + since 增量：store.py + plugin.py，3 路由） |
 | `templates/`, `static/` | 管理后台 UI |
 | `deploy/` | 一键安装、Docker Compose、systemd 单元、加固 Dockerfile |
-| `tests/` | 内核鉴权/审计 + cardkey + update/crash + announce + overview + 内核补全接口端到端（共 37 项：28 + auth 4 + chat 5） |
+| `tests/` | 内核鉴权/审计 + cardkey + update/crash + announce + overview + 内核补全接口端到端（共 38 项：28 + auth 5 + chat 5） |
 | `docs/` | 本说明 + API 契约 |
 
 ## 插件是怎么被加载的
