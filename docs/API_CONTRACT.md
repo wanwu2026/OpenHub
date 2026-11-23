@@ -69,18 +69,25 @@
 
 ## 5. 内核接口（所有客户端共享）
 
-| 方法 | 路径 | 说明 |
-|---|---|---|
-| GET | `/api/v1/core/health` | 健康检查，`{"ok":true,"version":"..."}` |
-| POST | `/api/v1/core/devices` | 注册/上报设备码 |
-| GET | `/api/v1/core/config/{product}` | 拉取签名配置包（灰度 + 强制开关 + 缓存兜底） |
-| POST | `/api/v1/core/artifacts` | 上传 APK/产物（版本、渠道、签名指纹） |
-| GET | `/api/v1/core/artifacts/latest` | 查询最新版本（含 APK 签名证书指纹，供客户端校验） |
-| GET | `/api/v1/core/audit` | 审计日志（管理接口，`?limit=&offset=&path=` 过滤） |
-| GET | `/api/v1/core/keys` | 列出 API Key（管理接口，只显哈希前缀，无明文） |
-| POST | `/api/v1/core/keys` | 创建 API Key（管理接口，`{"label","scope"}`，明文仅此一次返回） |
-| POST | `/api/v1/core/keys/{id}/revoke` | 吊销 API Key（管理接口） |
-| GET | `/api/v1/core/overview` | 管理看板聚合（管理接口）：一次返回 `cardkey/update/announce/crash` 四插件列表 + `errors`，供 Web UI 单请求渲染。各插件读取失败只记入 `errors` 不影响其余 |
+| 方法 | 路径 | 鉴权 | 说明 |
+|---|---|---|---|
+| GET | `/api/v1/core/health` | 公开 | 健康检查，`{"ok":true,"version":"...","plugins":[...]}` |
+| POST | `/api/v1/core/devices` | API Key | 注册设备 `{"device_id","product","meta"}`，**只存 SHA-256 哈希**，重复注册=更新活跃时间 |
+| GET | `/api/v1/core/devices` | Admin | 设备列表（`?limit=&offset=&product=`），只有哈希无原始 device_id |
+| GET | `/api/v1/core/config/{product}` | API Key | 拉取签名配置包：`{enabled,rollout_percent,force_update,config,signature,signature_algo}`，停用返回 `config:null` |
+| POST | `/api/v1/core/config/{product}` | Admin | 编辑配置 `{"enabled","rollout_percent"0-100,"force_update","config":{...}}`，服务端用私钥签名 |
+| GET | `/api/v1/core/configs` | Admin | 配置列表 |
+| POST | `/api/v1/core/artifacts` | Admin | 上传产物（multipart：file + version/version_code/channel/signer_fingerprint/product/sha256），落盘 + 入库 |
+| GET | `/api/v1/core/artifacts` | Admin | 产物列表（`?product=`） |
+| GET | `/api/v1/core/artifacts/latest` | API Key | 最新版本（`?product=&channel=`），含 `signer_fingerprint` 供下载后比对 |
+| GET | `/api/v1/core/artifacts/download/{id}` | API Key | 下载产物文件本体 |
+| GET | `/api/v1/core/audit` | Admin | 审计日志（`?limit=&offset=&path=` 过滤） |
+| GET | `/api/v1/core/keys` | Admin | 列出 API Key（只显哈希前缀，无明文） |
+| POST | `/api/v1/core/keys` | Admin | 创建 API Key（`{"label","scope"}`，明文仅此一次返回） |
+| POST | `/api/v1/core/keys/{id}/revoke` | Admin | 吊销 API Key |
+| GET | `/api/v1/core/overview` | Admin | 管理看板聚合：一次返回 `cardkey/update/announce/crash/devices/configs/artifacts` + `errors`，供 Web UI 单请求渲染 |
+
+**配置签名约定**：客户端拉取配置后，用内置公钥验 `signature`——签名字节 = 对 `{product,enabled,rollout_percent,force_update,config}` 做 `json.dumps(sort_keys=True, separators=(',',':'))`（`ensure_ascii=True`），RSA-SHA256 + Base32（无填充），与 update/announce 清单同法。灰度 `rollout_percent` 与强制开关 `force_update` 的执行在客户端：客户端按设备哈希取模判断是否命中灰度。
 
 **API Key 安全约定**：库中只存 `SHA-256(key)`，永不存明文；明文仅在创建响应里返回一次，之后无法找回，丢失只能新建。审计日志只记匹配到的 `key_id`，不记 token 本身。首次安装时 `.env` 里的 bootstrap 凭据（Admin Token / 初始 API Key）保留，用于 DB 为空时启动并创建更多 key；可随时通过管理接口吊销库内 key，bootstrap 凭据的轮换通过改 `.env` 完成。
 

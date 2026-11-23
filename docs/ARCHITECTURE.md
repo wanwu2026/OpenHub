@@ -24,15 +24,15 @@ HTTP 请求
 
 | 目录 | 职责 |
 |---|---|
-| `core/` | 配置、错误码、插件协议、注册中心、数据库、鉴权、密钥管理、审计、Web UI 路由 |
-| `api/` | 内核 API 路由（`/api/v1/core/*`，含 keys/audit） |
+| `core/` | 配置、错误码、插件协议、注册中心、数据库、鉴权、密钥管理、审计、**内核 store**（设备/配置/产物 CRUD）、Web UI 路由 |
+| `api/` | 内核 API 路由（`/api/v1/core/*`，含 keys/audit/devices/config/artifacts/overview） |
 | `plugins/cardkey/` | 发卡插件（已从 CardKeySDK/demo-backend 迁入：签发核心 + 状态机 + 4 路由） |
 | `plugins/update/` | 更新检查插件（清单签名 + 指纹双校验：store.py + plugin.py，5 路由） |
 | `plugins/crash/` | 崩溃上报插件（PII 脱敏 + 限流 + 批量 + 状态：store.py + plugin.py，3 路由） |
 | `plugins/announce/` | 公告插件（服务端逐条签名 + 客户端验签 + since 增量：store.py + plugin.py，3 路由） |
 | `templates/`, `static/` | 管理后台 UI |
 | `deploy/` | 一键安装、Docker Compose、systemd 单元、加固 Dockerfile |
-| `tests/` | 内核鉴权/审计 + cardkey + update/crash + announce + overview 端到端（共 23 项） |
+| `tests/` | 内核鉴权/审计 + cardkey + update/crash + announce + overview + 内核补全接口端到端（共 28 项） |
 | `docs/` | 本说明 + API 契约 |
 
 ## 插件是怎么被加载的

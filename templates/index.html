@@ -26,6 +26,9 @@
       <button class="tab" data-tab="update">更新</button>
       <button class="tab" data-tab="announce">公告</button>
       <button class="tab" data-tab="crash">崩溃</button>
+      <button class="tab" data-tab="devices">设备</button>
+      <button class="tab" data-tab="config">配置</button>
+      <button class="tab" data-tab="artifacts">产物</button>
     </nav>
 
     <section class="card tab-panel active" id="panel-cardkey">
@@ -71,6 +74,39 @@
       <h2>崩溃上报（crash）</h2>
       <div class="muted">服务端已脱敏；点「已处理」标记。</div>
       <div id="crash-list" class="list">需 Admin Token</div>
+    </section>
+
+    <section class="card tab-panel" id="panel-devices">
+      <h2>设备（core/devices）</h2>
+      <div class="muted">只存设备哈希，不存原始 device_id。</div>
+      <div id="devices-list" class="list">需 Admin Token</div>
+    </section>
+
+    <section class="card tab-panel" id="panel-config">
+      <h2>配置下发（core/config）</h2>
+      <form id="config-form" class="inline-form">
+        <input name="product" placeholder="产品 chat_app" required>
+        <input name="rollout_percent" type="number" value="100" min="0" max="100" title="灰度百分比">
+        <label><input type="checkbox" name="enabled" checked> 启用</label>
+        <label><input type="checkbox" name="force_update"> 强制</label>
+        <input name="config_json" placeholder='配置 JSON，如 {"motd":"欢迎"}' value='{}'>
+        <button type="submit">保存并签名</button>
+      </form>
+      <div id="config-list" class="list">需 Admin Token</div>
+    </section>
+
+    <section class="card tab-panel" id="panel-artifacts">
+      <h2>产物托管（core/artifacts）</h2>
+      <form id="artifact-form2" class="inline-form" enctype="multipart/form-data">
+        <input name="product" placeholder="产品 chat_app" value="chat_app">
+        <input name="version" placeholder="版本 1.0.0" required>
+        <input name="version_code" type="number" value="1">
+        <input name="channel" value="stable">
+        <input name="signer_fingerprint" placeholder="签名证书 SHA-256（64 hex）" required>
+        <input type="file" name="file" required>
+        <button type="submit">上传</button>
+      </form>
+      <div id="artifacts-list" class="list">需 Admin Token</div>
     </section>
 
     <section class="card">
@@ -139,11 +175,17 @@
           `<div class="row">#${r.id} ${esc(r.app_id)} [${esc(r.status)}] <code>${esc((r.stacktrace||'').slice(0,120))}</code> ` +
           `<button class="resolve" data-id="${r.id}">已处理</button></div>`);
         document.querySelectorAll('.resolve').forEach(b => b.onclick = () => resolveCrash(b.dataset.id));
+        renderList($('devices-list'), x.devices, r =>
+          `<div class="row"><code>${esc(r.device_hash)}</code> 产品=${esc(r.product)} 末次活跃=${new Date(r.last_seen).toLocaleString()}</div>`);
+        renderList($('config-list'), x.configs, r =>
+          `<div class="row"><b>${esc(r.product)}</b> ${r.enabled?'启用':'停用'} 灰度=${r.rollout_percent}% ${r.force_update?'[强制]':''}</div>`);
+        renderList($('artifacts-list'), x.artifacts, r =>
+          `<div class="row"><b>${esc(r.product)}</b> ${esc(r.version)} (code=${r.version_code}) 渠道=${esc(r.channel)} 大小=${r.size}B 指纹=${esc(r.signer_fingerprint||'').slice(0,12)}…</div>`);
         if (x.errors && Object.keys(x.errors).length) {
           console.warn('overview 部分数据失败:', x.errors);
         }
       }).catch(e => {
-        ['cardkey','update','announce','crash'].forEach(k => $(''+k+'-list').textContent = '加载失败: ' + e);
+        ['cardkey','update','announce','crash','devices','config','artifacts'].forEach(k => $(''+k+'-list').textContent = '加载失败: ' + e);
       });
     }
     loadAll();
@@ -182,6 +224,34 @@
       product: f.get('product'), title: f.get('title'), content: f.get('content'),
       level: f.get('level'), force_popup: f.get('force_popup') === 'on'
     }), loadAll);
+
+    // 配置下发：product 动态 + JSON 解析，单独绑定（服务端签名）
+    $('config-form').addEventListener('submit', e => {
+      e.preventDefault();
+      if (!token) { alert('请先保存 Admin Token'); return; }
+      const f = new FormData(e.target);
+      const product = f.get('product');
+      let config;
+      try { config = JSON.parse(f.get('config_json') || '{}'); }
+      catch (err) { alert('配置 JSON 格式错误'); return; }
+      const body = {rollout_percent: parseInt(f.get('rollout_percent')||'100',10),
+        enabled: f.get('enabled')==='on', force_update: f.get('force_update')==='on', config};
+      fetch(API + '/core/config/' + encodeURIComponent(product),
+        {method:'POST', headers: auth(), body: JSON.stringify(body)})
+        .then(r => r.json()).then(d => { alert(JSON.stringify(d, null, 2)); loadAll(); })
+        .catch(err => alert('失败: ' + err));
+    });
+
+    // 产物上传：multipart/form-data，单独处理
+    $('artifact-form2').addEventListener('submit', e => {
+      e.preventDefault();
+      if (!token) { alert('请先保存 Admin Token'); return; }
+      const fd = new FormData(e.target);
+      fetch(API + '/core/artifacts', {method:'POST',
+        headers: {'Authorization':'Bearer ' + token}, body: fd})
+        .then(r => r.json()).then(d => { alert(JSON.stringify(d, null, 2)); loadAll(); })
+        .catch(err => alert('失败: ' + err));
+    });
 
     bindForm('key-form', '/core/keys', f => ({
       label: f.get('label'), scope: f.get('scope')
